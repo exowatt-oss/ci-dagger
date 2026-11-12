@@ -30,6 +30,7 @@ jobs:
           archive="dagger_v${version}_linux_amd64.tar.gz"
           url="https://github.com/dagger/dagger/releases/download/v${version}"
           mkdir -p "$RUNNER_TEMP/dagger-bin"
+          cd "$RUNNER_TEMP"
           curl --fail --location --silent --show-error "$url/$archive" -o "$RUNNER_TEMP/$archive"
           curl --fail --location --silent --show-error "$url/checksums.txt" -o "$RUNNER_TEMP/dagger-checksums.txt"
           awk -v name="$archive" '$2 == name { print $1 "  " $2 }' "$RUNNER_TEMP/dagger-checksums.txt" | sha256sum --check --strict

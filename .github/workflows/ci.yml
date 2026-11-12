@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Go tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install pinned Dagger CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="0.21.10"
+          archive="dagger_v${version}_linux_amd64.tar.gz"
+          url="https://github.com/dagger/dagger/releases/download/v${version}"
+          mkdir -p "$RUNNER_TEMP/dagger-bin"
+          curl --fail --location --silent --show-error "$url/$archive" -o "$RUNNER_TEMP/$archive"
+          curl --fail --location --silent --show-error "$url/checksums.txt" -o "$RUNNER_TEMP/dagger-checksums.txt"
+          awk -v name="$archive" '$2 == name { print $1 "  " $2 }' "$RUNNER_TEMP/dagger-checksums.txt" | sha256sum --check --strict
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP/dagger-bin" dagger
+          echo "$RUNNER_TEMP/dagger-bin" >> "$GITHUB_PATH"
+
+      - name: Generate Dagger Go SDK
+        run: dagger develop
+
+      - name: Smoke-test public Go primitive
+        run: dagger call -m . go --src=. --repo=ci-dagger
+
+      - name: Check formatting
+        shell: bash
+        run: |
+          set -euo pipefail
+          unformatted="$(find . -name '*.go' -type f -print0 | xargs -0 -r gofmt -l)"
+          if [[ -n "$unformatted" ]]; then
+            printf '%s\n' "$unformatted"
+            exit 1
+          fi
+
+      - name: Vet
+        run: go vet -p 4 ./...
+
+      - name: Test
+        run: go test -race -p 4 ./...

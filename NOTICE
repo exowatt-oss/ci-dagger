@@ -1,0 +1,6 @@
+Copyright 2026 Exowatt, Inc.
+
+This distribution contains the generic CI primitives exported from the
+ci-dagger project. Third-party dependencies and generated Dagger SDK code
+remain under their respective licenses; see their upstream module metadata
+and license files.
